@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Feedlot La Candelaria · Compradores</title>
+  <meta http-equiv="refresh" content="0; url='https://script.google.com/macros/s/AKfycby-IuldRAFhEjS6OVX8av_0flXFnGSzAa4DH-uel6gcHKBbw1sW8QRFKRVzatPIROHT6A/exec'">
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f7f9f4;
+      font-family: 'Work Sans', sans-serif;
+      color: #4a5568;
+      text-align: center;
+      padding: 24px;
+    }
+    a { color: #2d6a4f; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div>
+    <p>Redirigiendo…</p>
+    <p><a id="link-manual" href="https://script.google.com/macros/s/AKfycby-IuldRAFhEjS6OVX8av_0flXFnGSzAa4DH-uel6gcHKBbw1sW8QRFKRVzatPIROHT6A/exec">Si no redirige automáticamente, tocá acá</a></p>
+  </div>
+  <script>
+    (function () {
+      var destino = "https://script.google.com/macros/s/AKfycby-IuldRAFhEjS6OVX8av_0flXFnGSzAa4DH-uel6gcHKBbw1sW8QRFKRVzatPIROHT6A/exec";
+      // Preserva cualquier parámetro (ej. ?token=xxxx) que venga en la URL puente
+      var params = window.location.search;
+      if (params) {
+        destino += (destino.indexOf('?') === -1 ? '?' : '&') + params.substring(1);
+      }
+      document.getElementById('link-manual').href = destino;
+      window.location.replace(destino);
+    })();
+  </script>
+</body>
+</html>
