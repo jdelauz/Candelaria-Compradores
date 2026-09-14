@@ -4,34 +4,301 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Feedlot La Candelaria · Compradores</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    html, body {
+    :root {
+      --bg: #f7f9f4;
+      --bg-surface: #ffffff;
+      --text-primary: #1a3a2a;
+      --text-body: #4a5568;
+      --text-muted: #6b7280;
+      --border: #d1d5db;
+      --accent-gold: #c49a1a;
+      --unit-primary: #2d6a4f;
+      --state-negative: #dc2626;
+      --state-negative-bg: #fee2e2;
+      --serif: 'Libre Baskerville', Georgia, serif;
+      --sans: 'Work Sans', sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
       margin: 0;
-      padding: 0;
-      height: 100%;
+      background: var(--bg);
+      font-family: var(--sans);
+      color: var(--text-body);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+    .card {
+      background: var(--bg-surface);
       width: 100%;
+      max-width: 420px;
+      border: 1px solid #e8e4dd;
+      border-radius: 8px;
       overflow: hidden;
-      background: #f7f9f4;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
     }
-    iframe {
-      border: 0;
-      width: 100%;
-      height: 100%;
-      height: 100dvh;
+    .card-header {
+      background: #111;
+      padding: 20px 24px;
+      border-bottom: 3px solid var(--accent-gold);
+    }
+    .card-header .unidad {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.5);
+    }
+    .card-header .titulo {
+      font-family: var(--serif);
+      font-size: 18px;
+      color: #fff;
+      margin-top: 4px;
+    }
+    .card-body { padding: 28px 24px; }
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+    .section-label .bar {
+      width: 20px; height: 2px; background: var(--accent-gold); flex-shrink: 0;
+    }
+    .section-label span {
+      font-size: 10px; font-weight: 800; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--accent-gold);
+    }
+    h1.title-md {
+      font-family: var(--serif);
+      font-weight: 400;
+      font-size: 20px;
+      color: var(--text-primary);
+      margin: 0 0 20px 0;
+    }
+    label {
       display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      margin-top: 16px;
     }
+    label:first-of-type { margin-top: 0; }
+    input[type="text"], input[type="email"], input[type="tel"] {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 15px;
+      font-family: var(--sans);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--text-primary);
+    }
+    input:focus { outline: none; border-color: var(--unit-primary); }
+    button {
+      width: 100%;
+      margin-top: 24px;
+      padding: 13px 16px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: var(--sans);
+      color: #fff;
+      background: var(--unit-primary);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .6; cursor: default; }
+    p.body-text { font-size: 14px; line-height: 1.6; color: var(--text-body); }
+    .msg {
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 4px;
+      margin-top: 16px;
+    }
+    .msg.error { background: var(--state-negative-bg); color: var(--state-negative); }
+    .msg.ok { background: #dcfce7; color: #1a6b3a; }
+    .link-box {
+      margin-top: 16px;
+      padding: 14px;
+      background: #f0ede8;
+      border-radius: 4px;
+      font-size: 13px;
+      word-break: break-all;
+      color: var(--text-primary);
+    }
+    .center { text-align: center; }
+    .icon { font-size: 40px; margin-bottom: 12px; }
+    .oculto { display: none; }
   </style>
 </head>
 <body>
-  <iframe id="app" title="Feedlot La Candelaria - Compradores"></iframe>
+  <div class="card">
+    <div class="card-header">
+      <div class="unidad">Feedlot La Candelaria</div>
+      <div class="titulo">Circuito de Compradores</div>
+    </div>
+    <div class="card-body" id="card-body">
+      <div class="center"><p class="body-text">Cargando…</p></div>
+    </div>
+  </div>
+
   <script>
-    (function () {
-      var destino = "https://script.google.com/macros/s/AKfycby-IuldRAFhEjS6OVX8av_0fIXFnGSzAa4DH-uel6gcHKBbw1sW8QRFKRVzatPlROHT6A/exec";
-      var params = window.location.search;
-      if (params) {
-        destino += (destino.indexOf('?') === -1 ? '?' : '&') + params.substring(1);
+    // ==================== CONFIGURACIÓN ====================
+    var API_URL = 'https://script.google.com/macros/s/AKfycby-IuldRAFhEjS6OVX8av_0flXFnGSzAa4DH-uel6gcHKBbw1sW8QRFKRVzatPIROHT6A/exec';
+
+    // ==================== HELPERS DE API ====================
+    function apiGet(params) {
+      var qs = new URLSearchParams(params).toString();
+      return fetch(API_URL + '?' + qs).then(function (r) { return r.json(); });
+    }
+
+    function apiPost(action, data) {
+      var body = Object.assign({ action: action }, data);
+      return fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita el preflight de CORS
+        body: JSON.stringify(body)
+      }).then(function (r) { return r.json(); });
+    }
+
+    // ==================== RENDER ====================
+    var cardBody = document.getElementById('card-body');
+
+    function renderRegistro() {
+      cardBody.innerHTML =
+        '<div id="paso-registro">' +
+          '<div class="section-label"><div class="bar"></div><span>Alta de comprador</span></div>' +
+          '<h1 class="title-md">Registrate para empezar</h1>' +
+          '<label for="nombre">Nombre y apellido</label>' +
+          '<input type="text" id="nombre" placeholder="Ej: Juan Pérez">' +
+          '<label for="empresa">Empresa / Consignataria</label>' +
+          '<input type="text" id="empresa" placeholder="Ej: Consignataria Rural SA">' +
+          '<label for="email">Mail</label>' +
+          '<input type="email" id="email" placeholder="tu@mail.com">' +
+          '<button id="btn-registrar">Enviar código de verificación</button>' +
+          '<div id="msg-registro"></div>' +
+        '</div>';
+      document.getElementById('btn-registrar').addEventListener('click', enviarRegistro);
+    }
+
+    function renderCodigo() {
+      cardBody.innerHTML =
+        '<div id="paso-codigo">' +
+          '<div class="section-label"><div class="bar"></div><span>Verificación</span></div>' +
+          '<h1 class="title-md">Ingresá el código</h1>' +
+          '<p class="body-text">Te lo mandamos por mail. Puede tardar un minuto en llegar.</p>' +
+          '<label for="codigo">Código de 6 dígitos</label>' +
+          '<input type="text" id="codigo" maxlength="6" inputmode="numeric" placeholder="000000">' +
+          '<button id="btn-verificar">Confirmar</button>' +
+          '<div id="msg-codigo"></div>' +
+        '</div>';
+      document.getElementById('btn-verificar').addEventListener('click', verificar);
+    }
+
+    function renderFinal(link) {
+      cardBody.innerHTML =
+        '<div class="section-label"><div class="bar"></div><span>Listo</span></div>' +
+        '<h1 class="title-md">Cuenta verificada</h1>' +
+        '<p class="body-text">Guardá este link personal — lo vas a usar siempre para acceder, sin pedir código de nuevo. También te lo mandamos por mail.</p>' +
+        '<div class="link-box">' + link + '</div>' +
+        '<p class="body-text">Un administrador todavía tiene que habilitar tu cuenta. Te avisamos por mail apenas esté lista.</p>';
+    }
+
+    function renderCentro(icono, titulo, texto) {
+      cardBody.innerHTML =
+        '<div class="center">' +
+          '<div class="icon">' + icono + '</div>' +
+          '<h1 class="title-md">' + titulo + '</h1>' +
+          '<p class="body-text">' + texto + '</p>' +
+        '</div>';
+    }
+
+    // ==================== ACCIONES ====================
+    var emailRegistrado = '';
+
+    function enviarRegistro() {
+      var nombre = document.getElementById('nombre').value;
+      var empresa = document.getElementById('empresa').value;
+      var email = document.getElementById('email').value;
+      var btn = document.getElementById('btn-registrar');
+      var msg = document.getElementById('msg-registro');
+      msg.innerHTML = '';
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+
+      apiPost('registrar', { nombre: nombre, empresa: empresa, email: email })
+        .then(function (res) {
+          btn.disabled = false;
+          btn.textContent = 'Enviar código de verificación';
+          if (res.ok) {
+            emailRegistrado = res.email;
+            renderCodigo();
+          } else {
+            msg.innerHTML = '<div class="msg error">' + res.error + '</div>';
+          }
+        })
+        .catch(function (err) {
+          btn.disabled = false;
+          btn.textContent = 'Enviar código de verificación';
+          msg.innerHTML = '<div class="msg error">Ocurrió un error de conexión. Probá de nuevo.</div>';
+        });
+    }
+
+    function verificar() {
+      var codigo = document.getElementById('codigo').value;
+      var btn = document.getElementById('btn-verificar');
+      var msg = document.getElementById('msg-codigo');
+      msg.innerHTML = '';
+      btn.disabled = true;
+      btn.textContent = 'Verificando...';
+
+      apiPost('verificar', { email: emailRegistrado, codigo: codigo })
+        .then(function (res) {
+          btn.disabled = false;
+          btn.textContent = 'Confirmar';
+          if (res.ok) {
+            renderFinal(res.link);
+          } else {
+            msg.innerHTML = '<div class="msg error">' + res.error + '</div>';
+          }
+        })
+        .catch(function (err) {
+          btn.disabled = false;
+          btn.textContent = 'Confirmar';
+          msg.innerHTML = '<div class="msg error">Ocurrió un error de conexión. Probá de nuevo.</div>';
+        });
+    }
+
+    // ==================== INICIO ====================
+    (function init() {
+      var params = new URLSearchParams(window.location.search);
+      var token = params.get('token');
+
+      if (!token) {
+        renderRegistro();
+        return;
       }
-      document.getElementById('app').src = destino;
+
+      apiGet({ action: 'estado', token: token })
+        .then(function (res) {
+          if (res.mode === 'pendiente_vinculacion') {
+            renderCentro('⏳', 'Hola ' + res.nombre, 'Tu cuenta está verificada. Un administrador la va a habilitar en breve para que puedas informar negocios y cargas. Te avisamos por mail.');
+          } else if (res.mode === 'home') {
+            renderCentro('✅', 'Hola ' + res.nombre, 'Tu cuenta está activa. Las opciones de "Cierre de negocio" e "Informe de carga" se habilitan en el próximo paso.');
+          } else {
+            renderCentro('⚠️', 'Link no válido', 'Este link no corresponde a ninguna cuenta activa. Registrate de nuevo desde el link general que te compartieron.');
+          }
+        })
+        .catch(function () {
+          renderCentro('⚠️', 'Error de conexión', 'No pudimos consultar tu cuenta. Probá de nuevo en un momento.');
+        });
     })();
   </script>
 </body>
