@@ -220,6 +220,84 @@
         '</div>';
     }
 
+    var tokenActual = '';
+    var consignatariosActuales = [];
+
+    function renderHome(nombre) {
+      cardBody.innerHTML =
+        '<div class="section-label"><div class="bar"></div><span>Menú</span></div>' +
+        '<h1 class="title-md">Hola ' + nombre + '</h1>' +
+        '<button id="btn-cierre">Cierre de negocio</button>' +
+        '<button id="btn-carga" style="margin-top:10px;background:transparent;color:var(--unit-primary);border:1px solid var(--unit-primary);">Informe de carga (próximamente)</button>';
+      document.getElementById('btn-cierre').addEventListener('click', renderFormCierre);
+      document.getElementById('btn-carga').addEventListener('click', function () {
+        alert('Todavía no está disponible — es el próximo paso.');
+      });
+    }
+
+    function renderFormCierre() {
+      var opcionesDatalist = consignatariosActuales.map(function (c) {
+        return '<option value="' + c + '">';
+      }).join('');
+      var hoy = new Date().toISOString().substring(0, 10);
+
+      cardBody.innerHTML =
+        '<div class="section-label"><div class="bar"></div><span>Cierre de negocio</span></div>' +
+        '<h1 class="title-md">Cargar cierre</h1>' +
+        '<label for="categoria">Categoría</label>' +
+        '<select id="categoria" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' +
+          '<option value="TM">TM</option><option value="NT">NT</option><option value="VQ">VQ</option><option value="TH">TH</option>' +
+        '</select>' +
+        '<label for="cantidad">Cantidad (cabezas)</label>' +
+        '<input type="text" id="cantidad" inputmode="numeric" placeholder="Ej: 120">' +
+        '<label for="consignatario">Consignatario</label>' +
+        '<input type="text" id="consignatario" list="lista-consignatarios" placeholder="Elegí o escribí uno nuevo">' +
+        '<datalist id="lista-consignatarios">' + opcionesDatalist + '</datalist>' +
+        '<label for="lugarCarga">Lugar de carga</label>' +
+        '<input type="text" id="lugarCarga" placeholder="Origen">' +
+        '<label for="destino">Destino</label>' +
+        '<input type="text" id="destino" placeholder="Destino">' +
+        '<label for="diaCierre">Día de cierre</label>' +
+        '<input type="text" id="diaCierre" value="' + hoy + '" placeholder="AAAA-MM-DD">' +
+        '<button id="btn-guardar-cierre">Confirmar cierre</button>' +
+        '<div id="msg-cierre"></div>';
+
+      document.getElementById('btn-guardar-cierre').addEventListener('click', guardarCierre);
+    }
+
+    function guardarCierre() {
+      var datos = {
+        token: tokenActual,
+        categoria: document.getElementById('categoria').value,
+        cantidad: document.getElementById('cantidad').value,
+        consignatario: document.getElementById('consignatario').value,
+        lugarCarga: document.getElementById('lugarCarga').value,
+        destino: document.getElementById('destino').value,
+        diaCierre: document.getElementById('diaCierre').value
+      };
+      var btn = document.getElementById('btn-guardar-cierre');
+      var msg = document.getElementById('msg-cierre');
+      msg.innerHTML = '';
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      apiPost('cerrarNegocio', datos)
+        .then(function (res) {
+          btn.disabled = false;
+          btn.textContent = 'Confirmar cierre';
+          if (res.ok) {
+            renderCentro('✅', 'Negocio cargado', 'Se guardó correctamente y se mandó el mail de confirmación.');
+          } else {
+            msg.innerHTML = '<div class="msg error">' + res.error + '</div>';
+          }
+        })
+        .catch(function () {
+          btn.disabled = false;
+          btn.textContent = 'Confirmar cierre';
+          msg.innerHTML = '<div class="msg error">Ocurrió un error de conexión. Probá de nuevo.</div>';
+        });
+    }
+
     // ==================== ACCIONES ====================
     var emailRegistrado = '';
 
@@ -291,7 +369,9 @@
           if (res.mode === 'pendiente_vinculacion') {
             renderCentro('⏳', 'Hola ' + res.nombre, 'Tu cuenta está verificada. Un administrador la va a habilitar en breve para que puedas informar negocios y cargas. Te avisamos por mail.');
           } else if (res.mode === 'home') {
-            renderCentro('✅', 'Hola ' + res.nombre, 'Tu cuenta está activa. Las opciones de "Cierre de negocio" e "Informe de carga" se habilitan en el próximo paso.');
+            tokenActual = token;
+            consignatariosActuales = res.consignatarios || [];
+            renderHome(res.nombre);
           } else {
             renderCentro('⚠️', 'Link no válido', 'Este link no corresponde a ninguna cuenta activa. Registrate de nuevo desde el link general que te compartieron.');
           }
