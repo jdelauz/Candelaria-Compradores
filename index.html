@@ -222,6 +222,8 @@
 
     var tokenActual = '';
     var consignatariosActuales = [];
+    var destinosActuales = ['SIN DESIGNAR'];
+    var filasCategoria = 0;
 
     function renderHome(nombre) {
       cardBody.innerHTML =
@@ -229,47 +231,101 @@
         '<h1 class="title-md">Hola ' + nombre + '</h1>' +
         '<button id="btn-cierre">Cierre de negocio</button>' +
         '<button id="btn-carga" style="margin-top:10px;background:transparent;color:var(--unit-primary);border:1px solid var(--unit-primary);">Informe de carga (próximamente)</button>';
-      document.getElementById('btn-cierre').addEventListener('click', renderFormCierre);
+      document.getElementById('btn-cierre').addEventListener('click', function () {
+        apiGet({ action: 'parametros' }).then(function (res) {
+          destinosActuales = (res.ok && res.destinos && res.destinos.length) ? res.destinos : ['SIN DESIGNAR'];
+          renderFormCierre();
+        }).catch(function () {
+          destinosActuales = ['SIN DESIGNAR'];
+          renderFormCierre();
+        });
+      });
       document.getElementById('btn-carga').addEventListener('click', function () {
         alert('Todavía no está disponible — es el próximo paso.');
       });
+    }
+
+    function filaCategoriaHtml_(id) {
+      return (
+        '<div class="fila-categoria" data-id="' + id + '" style="display:flex;gap:8px;margin-top:10px;align-items:flex-end;">' +
+          '<div style="flex:1;">' +
+            '<label style="margin-top:0;">Categoría</label>' +
+            '<select class="cat-select" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' +
+              '<option value="TM">TM</option><option value="NT">NT</option><option value="VQ">VQ</option><option value="TH">TH</option>' +
+            '</select>' +
+          '</div>' +
+          '<div style="flex:1;">' +
+            '<label style="margin-top:0;">Cantidad</label>' +
+            '<input type="text" class="cat-cantidad" inputmode="numeric" placeholder="Ej: 120">' +
+          '</div>' +
+          '<button type="button" class="btn-quitar-cat" data-id="' + id + '" style="width:auto;margin-top:0;padding:12px 14px;background:transparent;color:var(--state-negative);border:1px solid var(--state-negative);">✕</button>' +
+        '</div>'
+      );
+    }
+
+    function agregarFilaCategoria() {
+      filasCategoria++;
+      var cont = document.getElementById('categorias-container');
+      var div = document.createElement('div');
+      div.innerHTML = filaCategoriaHtml_(filasCategoria);
+      cont.appendChild(div.firstChild);
+      cont.querySelector('.btn-quitar-cat[data-id="' + filasCategoria + '"]').addEventListener('click', quitarFilaCategoria);
+    }
+
+    function quitarFilaCategoria(ev) {
+      var id = ev.currentTarget.getAttribute('data-id');
+      var cont = document.getElementById('categorias-container');
+      var fila = cont.querySelector('.fila-categoria[data-id="' + id + '"]');
+      if (cont.querySelectorAll('.fila-categoria').length > 1) {
+        fila.remove();
+      }
     }
 
     function renderFormCierre() {
       var opcionesDatalist = consignatariosActuales.map(function (c) {
         return '<option value="' + c + '">';
       }).join('');
+      var opcionesDestino = destinosActuales.map(function (d) {
+        return '<option value="' + d + '">' + d + '</option>';
+      }).join('');
       var hoy = new Date().toISOString().substring(0, 10);
+      filasCategoria = 0;
 
       cardBody.innerHTML =
         '<div class="section-label"><div class="bar"></div><span>Cierre de negocio</span></div>' +
         '<h1 class="title-md">Cargar cierre</h1>' +
-        '<label for="categoria">Categoría</label>' +
-        '<select id="categoria" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' +
-          '<option value="TM">TM</option><option value="NT">NT</option><option value="VQ">VQ</option><option value="TH">TH</option>' +
-        '</select>' +
-        '<label for="cantidad">Cantidad (cabezas)</label>' +
-        '<input type="text" id="cantidad" inputmode="numeric" placeholder="Ej: 120">' +
+        '<label>Categorías y cantidades</label>' +
+        '<div id="categorias-container"></div>' +
+        '<button type="button" id="btn-agregar-cat" style="margin-top:8px;background:transparent;color:var(--unit-primary);border:1px dashed var(--unit-primary);">+ Agregar otra categoría</button>' +
         '<label for="consignatario">Consignatario</label>' +
         '<input type="text" id="consignatario" list="lista-consignatarios" placeholder="Elegí o escribí uno nuevo">' +
         '<datalist id="lista-consignatarios">' + opcionesDatalist + '</datalist>' +
         '<label for="lugarCarga">Lugar de carga</label>' +
         '<input type="text" id="lugarCarga" placeholder="Origen">' +
         '<label for="destino">Destino</label>' +
-        '<input type="text" id="destino" placeholder="Destino">' +
+        '<select id="destino" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' + opcionesDestino + '</select>' +
         '<label for="diaCierre">Día de cierre</label>' +
         '<input type="text" id="diaCierre" value="' + hoy + '" placeholder="AAAA-MM-DD">' +
         '<button id="btn-guardar-cierre">Confirmar cierre</button>' +
         '<div id="msg-cierre"></div>';
 
+      agregarFilaCategoria();
+      document.getElementById('btn-agregar-cat').addEventListener('click', agregarFilaCategoria);
       document.getElementById('btn-guardar-cierre').addEventListener('click', guardarCierre);
     }
 
     function guardarCierre() {
+      var categorias = [];
+      document.querySelectorAll('.fila-categoria').forEach(function (fila) {
+        categorias.push({
+          categoria: fila.querySelector('.cat-select').value,
+          cantidad: fila.querySelector('.cat-cantidad').value
+        });
+      });
+
       var datos = {
         token: tokenActual,
-        categoria: document.getElementById('categoria').value,
-        cantidad: document.getElementById('cantidad').value,
+        categorias: categorias,
         consignatario: document.getElementById('consignatario').value,
         lugarCarga: document.getElementById('lugarCarga').value,
         destino: document.getElementById('destino').value,
