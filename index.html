@@ -222,6 +222,7 @@
     }
 
     var tokenActual = '';
+    var nombreActual = '';
     var consignatariosActuales = [];
     var destinosActuales = ['SIN DESIGNAR'];
     var origenesActuales = [];
@@ -340,6 +341,33 @@
       });
     }
 
+    function renderConfirmacionCierre() {
+      cardBody.innerHTML =
+        '<div class="center">' +
+          '<div class="icon">✅</div>' +
+          '<h1 class="title-md">Negocio cargado</h1>' +
+          '<p class="body-text">Se guardó correctamente y se mandó el mail de confirmación.</p>' +
+        '</div>' +
+        '<button id="btn-otro-cierre">Cargar otro cierre</button>' +
+        '<button id="btn-volver-inicio" style="margin-top:10px;background:transparent;color:var(--unit-primary);border:1px solid var(--unit-primary);">Volver al inicio</button>';
+
+      document.getElementById('btn-otro-cierre').addEventListener('click', function () {
+        renderCentro('⏳', 'Un momento', 'Cargando el formulario...');
+        apiGet({ action: 'parametros' }).then(function (res) {
+          destinosActuales = (res.ok && res.destinos && res.destinos.length) ? res.destinos : ['SIN DESIGNAR'];
+          origenesActuales = (res.ok && res.origenes) ? res.origenes : [];
+          renderFormCierre();
+        }).catch(function () {
+          destinosActuales = ['SIN DESIGNAR'];
+          origenesActuales = [];
+          renderFormCierre();
+        });
+      });
+      document.getElementById('btn-volver-inicio').addEventListener('click', function () {
+        renderHome(nombreActual);
+      });
+    }
+
     function guardarCierre() {
       var categorias = [];
       document.querySelectorAll('.fila-categoria').forEach(function (fila) {
@@ -376,7 +404,7 @@
           btn.disabled = false;
           btn.textContent = 'Confirmar cierre';
           if (res.ok) {
-            renderCentro('✅', 'Negocio cargado', 'Se guardó correctamente y se mandó el mail de confirmación.');
+            renderConfirmacionCierre();
           } else {
             msg.innerHTML = '<div class="msg error">' + res.error + '</div>';
           }
@@ -460,6 +488,7 @@
             renderCentro('⏳', 'Hola ' + res.nombre, 'Tu cuenta está verificada. Un administrador la va a habilitar en breve para que puedas informar negocios y cargas. Te avisamos por mail.');
           } else if (res.mode === 'home') {
             tokenActual = token;
+            nombreActual = res.nombre;
             consignatariosActuales = res.consignatarios || [];
             renderHome(res.nombre);
           } else {
