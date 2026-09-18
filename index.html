@@ -101,6 +101,7 @@
       color: var(--text-primary);
     }
     input:focus { outline: none; border-color: var(--unit-primary); }
+    input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 1; }
     button {
       width: 100%;
       margin-top: 24px;
@@ -247,18 +248,30 @@
 
     function filaCategoriaHtml_(id) {
       return (
-        '<div class="fila-categoria" data-id="' + id + '" style="display:flex;gap:8px;margin-top:10px;align-items:flex-end;">' +
-          '<div style="flex:1;">' +
-            '<label style="margin-top:0;">Categoría</label>' +
-            '<select class="cat-select" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' +
-              '<option value="TM">TM</option><option value="NT">NT</option><option value="VQ">VQ</option><option value="TH">TH</option>' +
-            '</select>' +
+        '<div class="fila-categoria" data-id="' + id + '" style="border:1px solid var(--border);border-radius:4px;padding:10px;margin-top:10px;">' +
+          '<div style="display:flex;gap:8px;align-items:flex-end;">' +
+            '<div style="flex:1;">' +
+              '<label style="margin-top:0;">Categoría</label>' +
+              '<select class="cat-select" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' +
+                '<option value="TM">TM</option><option value="NT">NT</option><option value="VQ">VQ</option><option value="TH">TH</option>' +
+              '</select>' +
+            '</div>' +
+            '<div style="flex:1;">' +
+              '<label style="margin-top:0;">Cantidad</label>' +
+              '<input type="text" class="cat-cantidad" inputmode="numeric" placeholder="Ej: 120">' +
+            '</div>' +
+            '<button type="button" class="btn-quitar-cat" data-id="' + id + '" style="width:auto;margin-top:0;padding:12px 14px;background:transparent;color:var(--state-negative);border:1px solid var(--state-negative);">✕</button>' +
           '</div>' +
-          '<div style="flex:1;">' +
-            '<label style="margin-top:0;">Cantidad</label>' +
-            '<input type="text" class="cat-cantidad" inputmode="numeric" placeholder="Ej: 120">' +
+          '<div style="display:flex;gap:8px;margin-top:8px;">' +
+            '<div style="flex:1;">' +
+              '<label style="margin-top:0;font-size:11px;">Peso prom. kg (opcional)</label>' +
+              '<input type="text" class="cat-peso" inputmode="decimal" placeholder="Ej: 380">' +
+            '</div>' +
+            '<div style="flex:1;">' +
+              '<label style="margin-top:0;font-size:11px;">Precio $/kg (opcional)</label>' +
+              '<input type="text" class="cat-precio" inputmode="decimal" placeholder="Ej: 2500">' +
+            '</div>' +
           '</div>' +
-          '<button type="button" class="btn-quitar-cat" data-id="' + id + '" style="width:auto;margin-top:0;padding:12px 14px;background:transparent;color:var(--state-negative);border:1px solid var(--state-negative);">✕</button>' +
         '</div>'
       );
     }
@@ -282,8 +295,8 @@
     }
 
     function renderFormCierre() {
-      var opcionesDatalist = consignatariosActuales.map(function (c) {
-        return '<option value="' + c + '">';
+      var opcionesConsignatario = consignatariosActuales.map(function (c) {
+        return '<option value="' + c + '">' + c + '</option>';
       }).join('');
       var opcionesDestino = destinosActuales.map(function (d) {
         return '<option value="' + d + '">' + d + '</option>';
@@ -297,21 +310,29 @@
         '<label>Categorías y cantidades</label>' +
         '<div id="categorias-container"></div>' +
         '<button type="button" id="btn-agregar-cat" style="margin-top:8px;background:transparent;color:var(--unit-primary);border:1px dashed var(--unit-primary);">+ Agregar otra categoría</button>' +
-        '<label for="consignatario">Consignatario</label>' +
-        '<input type="text" id="consignatario" list="lista-consignatarios" placeholder="Elegí o escribí uno nuevo">' +
-        '<datalist id="lista-consignatarios">' + opcionesDatalist + '</datalist>' +
+        '<label for="consignatario-select">Consignatario</label>' +
+        '<select id="consignatario-select" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' +
+          opcionesConsignatario +
+          '<option value="__nuevo__">+ Nueva consignataria...</option>' +
+        '</select>' +
+        '<input type="text" id="consignatario-nuevo" placeholder="Escribí la nueva consignataria" style="display:none;margin-top:8px;">' +
         '<label for="lugarCarga">Lugar de carga</label>' +
         '<input type="text" id="lugarCarga" placeholder="Origen">' +
         '<label for="destino">Destino</label>' +
         '<select id="destino" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' + opcionesDestino + '</select>' +
         '<label for="diaCierre">Día de cierre</label>' +
         '<input type="text" id="diaCierre" value="' + hoy + '" placeholder="AAAA-MM-DD">' +
+        '<label for="detalle">Detalle / condiciones (opcional)</label>' +
+        '<textarea id="detalle" rows="2" placeholder="Ej: $X hasta XX kg, o tabla $X hasta XX kg a morir..." style="width:100%;padding:12px 14px;font-size:14px;border:1px solid var(--border);border-radius:4px;font-family:var(--sans);color:var(--text-primary);resize:vertical;"></textarea>' +
         '<button id="btn-guardar-cierre">Confirmar cierre</button>' +
         '<div id="msg-cierre"></div>';
 
       agregarFilaCategoria();
       document.getElementById('btn-agregar-cat').addEventListener('click', agregarFilaCategoria);
       document.getElementById('btn-guardar-cierre').addEventListener('click', guardarCierre);
+      document.getElementById('consignatario-select').addEventListener('change', function (ev) {
+        document.getElementById('consignatario-nuevo').style.display = (ev.target.value === '__nuevo__') ? 'block' : 'none';
+      });
     }
 
     function guardarCierre() {
@@ -319,17 +340,25 @@
       document.querySelectorAll('.fila-categoria').forEach(function (fila) {
         categorias.push({
           categoria: fila.querySelector('.cat-select').value,
-          cantidad: fila.querySelector('.cat-cantidad').value
+          cantidad: fila.querySelector('.cat-cantidad').value,
+          pesoPromedio: fila.querySelector('.cat-peso').value,
+          precioPorKg: fila.querySelector('.cat-precio').value
         });
       });
+
+      var selectConsignatario = document.getElementById('consignatario-select');
+      var consignatario = (selectConsignatario.value === '__nuevo__')
+        ? document.getElementById('consignatario-nuevo').value
+        : selectConsignatario.value;
 
       var datos = {
         token: tokenActual,
         categorias: categorias,
-        consignatario: document.getElementById('consignatario').value,
+        consignatario: consignatario,
         lugarCarga: document.getElementById('lugarCarga').value,
         destino: document.getElementById('destino').value,
-        diaCierre: document.getElementById('diaCierre').value
+        diaCierre: document.getElementById('diaCierre').value,
+        detalle: document.getElementById('detalle').value
       };
       var btn = document.getElementById('btn-guardar-cierre');
       var msg = document.getElementById('msg-cierre');
