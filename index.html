@@ -224,6 +224,7 @@
     var tokenActual = '';
     var consignatariosActuales = [];
     var destinosActuales = ['SIN DESIGNAR'];
+    var origenesActuales = [];
     var filasCategoria = 0;
 
     function renderHome(nombre) {
@@ -235,9 +236,11 @@
       document.getElementById('btn-cierre').addEventListener('click', function () {
         apiGet({ action: 'parametros' }).then(function (res) {
           destinosActuales = (res.ok && res.destinos && res.destinos.length) ? res.destinos : ['SIN DESIGNAR'];
+          origenesActuales = (res.ok && res.origenes) ? res.origenes : [];
           renderFormCierre();
         }).catch(function () {
           destinosActuales = ['SIN DESIGNAR'];
+          origenesActuales = [];
           renderFormCierre();
         });
       });
@@ -317,7 +320,8 @@
         '</select>' +
         '<input type="text" id="consignatario-nuevo" placeholder="Escribí la nueva consignataria" style="display:none;margin-top:8px;">' +
         '<label for="lugarCarga">Lugar de carga</label>' +
-        '<input type="text" id="lugarCarga" placeholder="Origen">' +
+        '<input type="text" id="lugarCarga" list="lista-origenes" placeholder="Origen" autocomplete="off">' +
+        '<datalist id="lista-origenes">' + origenesActuales.map(function (o) { return '<option value="' + o + '">'; }).join('') + '</datalist>' +
         '<label for="destino">Destino</label>' +
         '<select id="destino" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' + opcionesDestino + '</select>' +
         '<label for="diaCierre">Día de cierre</label>' +
