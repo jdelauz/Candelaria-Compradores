@@ -234,6 +234,7 @@
         '<button id="btn-cierre">Cierre de negocio</button>' +
         '<button id="btn-carga" style="margin-top:10px;background:transparent;color:var(--unit-primary);border:1px solid var(--unit-primary);">Informe de carga (próximamente)</button>';
       document.getElementById('btn-cierre').addEventListener('click', function () {
+        renderCentro('⏳', 'Un momento', 'Cargando el formulario...');
         apiGet({ action: 'parametros' }).then(function (res) {
           destinosActuales = (res.ok && res.destinos && res.destinos.length) ? res.destinos : ['SIN DESIGNAR'];
           origenesActuales = (res.ok && res.origenes) ? res.origenes : [];
