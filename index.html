@@ -90,7 +90,7 @@
       margin-top: 16px;
     }
     label:first-of-type { margin-top: 0; }
-    input[type="text"], input[type="email"], input[type="tel"] {
+    input[type="text"], input[type="email"], input[type="tel"], input[type="date"] {
       width: 100%;
       padding: 12px 14px;
       font-size: 15px;
@@ -339,6 +339,8 @@
       document.getElementById('consignatario-select').addEventListener('change', function (ev) {
         document.getElementById('consignatario-nuevo').style.display = (ev.target.value === '__nuevo__') ? 'block' : 'none';
       });
+      var selInicial = document.getElementById('consignatario-select');
+      document.getElementById('consignatario-nuevo').style.display = (selInicial.value === '__nuevo__') ? 'block' : 'none';
     }
 
     function renderConfirmacionCierre() {
