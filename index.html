@@ -233,7 +233,7 @@
         '<div class="section-label"><div class="bar"></div><span>Menú</span></div>' +
         '<h1 class="title-md">Hola ' + nombre + '</h1>' +
         '<button id="btn-cierre">Cierre de negocio</button>' +
-        '<button id="btn-carga" style="margin-top:10px;background:transparent;color:var(--unit-primary);border:1px solid var(--unit-primary);">Informe de carga (próximamente)</button>';
+        '<button id="btn-carga" style="margin-top:10px;background:transparent;color:var(--unit-primary);border:1px solid var(--unit-primary);">Informe de carga</button>';
       document.getElementById('btn-cierre').addEventListener('click', function () {
         renderCentro('⏳', 'Un momento', 'Cargando el formulario...');
         apiGet({ action: 'parametros' }).then(function (res) {
@@ -247,8 +247,184 @@
         });
       });
       document.getElementById('btn-carga').addEventListener('click', function () {
-        alert('Todavía no está disponible — es el próximo paso.');
+        renderCentro('⏳', 'Un momento', 'Buscando tus negocios pendientes...');
+        apiGet({ action: 'negociosPendientes', token: tokenActual }).then(function (res) {
+          if (!res.ok) {
+            renderCentro('⚠️', 'No se pudo continuar', res.error || 'Ocurrió un error.');
+            return;
+          }
+          negociosPendientesActuales = res.negocios || [];
+          renderListaNegociosPendientes();
+        }).catch(function () {
+          renderCentro('⚠️', 'Error de conexión', 'Probá de nuevo en un momento.');
+        });
       });
+    }
+
+    var negociosPendientesActuales = [];
+    var negocioSeleccionadoActual = null;
+
+    function renderListaNegociosPendientes() {
+      if (negociosPendientesActuales.length === 0) {
+        cardBody.innerHTML =
+          '<div class="center">' +
+            '<div class="icon">📋</div>' +
+            '<h1 class="title-md">Sin negocios pendientes</h1>' +
+            '<p class="body-text">No tenés cierres de negocio esperando informe de carga.</p>' +
+          '</div>' +
+          '<button id="btn-volver-inicio-2" style="margin-top:10px;background:transparent;color:var(--unit-primary);border:1px solid var(--unit-primary);">Volver al inicio</button>';
+        document.getElementById('btn-volver-inicio-2').addEventListener('click', function () { renderHome(nombreActual); });
+        return;
+      }
+
+      var opciones = negociosPendientesActuales.map(function (n, idx) {
+        var resumenCat = n.categorias.map(function (c) { return c.categoria + ': ' + c.cantidad; }).join(', ');
+        var etiqueta = n.semana + ' · ' + n.lugarCarga + ' → ' + n.destino + ' (' + resumenCat + ')';
+        return '<option value="' + idx + '">' + etiqueta + '</option>';
+      }).join('');
+
+      cardBody.innerHTML =
+        '<div class="section-label"><div class="bar"></div><span>Informe de carga</span></div>' +
+        '<h1 class="title-md">Elegí el negocio</h1>' +
+        '<select id="negocio-select" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' + opciones + '</select>' +
+        '<button id="btn-siguiente-negocio">Continuar</button>';
+
+      document.getElementById('btn-siguiente-negocio').addEventListener('click', function () {
+        var idx = Number(document.getElementById('negocio-select').value);
+        renderFormInforme(negociosPendientesActuales[idx]);
+      });
+    }
+
+    function filaCategoriaInformeHtml_(cat, cantidadOriginal) {
+      return (
+        '<div class="fila-cat-informe" data-cat="' + cat + '" style="border:1px solid var(--border);border-radius:4px;padding:10px;margin-top:10px;">' +
+          '<label style="margin-top:0;">' + cat + ' — Cantidad</label>' +
+          '<input type="text" class="informe-cantidad" inputmode="numeric" value="' + cantidadOriginal + '">' +
+          '<div class="informe-kilos-cat" style="display:none;margin-top:8px;">' +
+            '<label style="margin-top:0;font-size:11px;">Kilos brutos (' + cat + ')</label>' +
+            '<input type="text" class="informe-kilos" inputmode="decimal" placeholder="Ej: 45000">' +
+          '</div>' +
+        '</div>'
+      );
+    }
+
+    function renderFormInforme(negocio) {
+      negocioSeleccionadoActual = negocio;
+      var filasCategorias = negocio.categorias.map(function (c) {
+        return filaCategoriaInformeHtml_(c.categoria, c.cantidad);
+      }).join('');
+
+      cardBody.innerHTML =
+        '<div class="section-label"><div class="bar"></div><span>Informe de carga</span></div>' +
+        '<h1 class="title-md">' + negocio.consignatario + '</h1>' +
+        '<p class="body-text">' + negocio.semana + ' · ' + negocio.lugarCarga + ' → ' + negocio.destino + '</p>' +
+        '<label>Cantidad de animales por categoría</label>' +
+        '<div id="categorias-informe-container">' + filasCategorias + '</div>' +
+        '<label style="margin-top:16px;">¿Cómo cargás los kilos brutos?</label>' +
+        '<select id="modo-kilos" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' +
+          '<option value="total">Total de la tropa</option>' +
+          '<option value="categoria">Por categoría</option>' +
+        '</select>' +
+        '<div id="kilos-total-container">' +
+          '<label for="kilosBrutosTotal">Kilos brutos totales</label>' +
+          '<input type="text" id="kilosBrutosTotal" inputmode="decimal" placeholder="Ej: 45000">' +
+        '</div>' +
+        '<label for="desbaste">Desbaste (%)</label>' +
+        '<input type="text" id="desbaste" inputmode="decimal" placeholder="Ej: 4">' +
+        '<div class="msg ok" id="kilos-netos-preview" style="display:none;"></div>' +
+        '<label for="observaciones">Observaciones</label>' +
+        '<textarea id="observaciones" rows="2" style="width:100%;padding:12px 14px;font-size:14px;border:1px solid var(--border);border-radius:4px;font-family:var(--sans);color:var(--text-primary);resize:vertical;"></textarea>' +
+        '<button id="btn-guardar-informe">Confirmar informe</button>' +
+        '<div id="msg-informe"></div>';
+
+      document.getElementById('modo-kilos').addEventListener('change', function (ev) {
+        var esPorCategoria = (ev.target.value === 'categoria');
+        document.getElementById('kilos-total-container').style.display = esPorCategoria ? 'none' : 'block';
+        document.querySelectorAll('.informe-kilos-cat').forEach(function (div) {
+          div.style.display = esPorCategoria ? 'block' : 'none';
+        });
+        actualizarPreviewKilosNetos();
+      });
+
+      cardBody.querySelectorAll('input').forEach(function (input) {
+        input.addEventListener('input', actualizarPreviewKilosNetos);
+      });
+
+      document.getElementById('btn-guardar-informe').addEventListener('click', guardarInforme);
+    }
+
+    function actualizarPreviewKilosNetos() {
+      var modo = document.getElementById('modo-kilos').value;
+      var kilosBrutos = 0;
+      if (modo === 'categoria') {
+        document.querySelectorAll('.informe-kilos').forEach(function (input) {
+          kilosBrutos += Number(input.value) || 0;
+        });
+      } else {
+        kilosBrutos = Number(document.getElementById('kilosBrutosTotal').value) || 0;
+      }
+      var desbaste = Number(document.getElementById('desbaste').value) || 0;
+      var preview = document.getElementById('kilos-netos-preview');
+      if (kilosBrutos > 0) {
+        var kilosNetos = Math.round(kilosBrutos * (1 - desbaste / 100) * 100) / 100;
+        preview.style.display = 'block';
+        preview.textContent = 'Kilos netos estimados: ' + kilosNetos + ' kg';
+      } else {
+        preview.style.display = 'none';
+      }
+    }
+
+    function guardarInforme() {
+      var categorias = [];
+      document.querySelectorAll('.fila-cat-informe').forEach(function (fila) {
+        var cat = fila.getAttribute('data-cat');
+        var cantidad = fila.querySelector('.informe-cantidad').value;
+        var kilosInput = fila.querySelector('.informe-kilos');
+        categorias.push({ categoria: cat, cantidad: cantidad, kilosBrutos: kilosInput ? kilosInput.value : '' });
+      });
+
+      var datos = {
+        token: tokenActual,
+        idNegocio: negocioSeleccionadoActual.idNegocio,
+        categorias: categorias,
+        modoKilos: document.getElementById('modo-kilos').value,
+        kilosBrutosTotal: document.getElementById('kilosBrutosTotal').value,
+        desbaste: document.getElementById('desbaste').value,
+        observaciones: document.getElementById('observaciones').value
+      };
+
+      var btn = document.getElementById('btn-guardar-informe');
+      var msg = document.getElementById('msg-informe');
+      msg.innerHTML = '';
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      apiPost('informarCarga', datos)
+        .then(function (res) {
+          btn.disabled = false;
+          btn.textContent = 'Confirmar informe';
+          if (res.ok) {
+            renderConfirmacionInforme();
+          } else {
+            msg.innerHTML = '<div class="msg error">' + res.error + '</div>';
+          }
+        })
+        .catch(function () {
+          btn.disabled = false;
+          btn.textContent = 'Confirmar informe';
+          msg.innerHTML = '<div class="msg error">Ocurrió un error de conexión. Probá de nuevo.</div>';
+        });
+    }
+
+    function renderConfirmacionInforme() {
+      cardBody.innerHTML =
+        '<div class="center">' +
+          '<div class="icon">✅</div>' +
+          '<h1 class="title-md">Informe cargado</h1>' +
+          '<p class="body-text">Se guardó correctamente y se mandó el mail de confirmación.</p>' +
+        '</div>' +
+        '<button id="btn-volver-inicio-3" style="margin-top:10px;background:transparent;color:var(--unit-primary);border:1px solid var(--unit-primary);">Volver al inicio</button>';
+      document.getElementById('btn-volver-inicio-3').addEventListener('click', function () { renderHome(nombreActual); });
     }
 
     function filaCategoriaHtml_(id) {
@@ -328,6 +504,18 @@
         '<select id="destino" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' + opcionesDestino + '</select>' +
         '<label for="diaCierre">Día de cierre</label>' +
         '<input type="date" id="diaCierre" value="' + hoy + '">' +
+        '<label for="plazoPago">Plazo de pago</label>' +
+        '<select id="plazoPago" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' +
+          '<option value="Contado">Contado</option>' +
+          '<option value="30 días">30 días</option>' +
+          '<option value="45 días">45 días</option>' +
+          '<option value="60 días">60 días</option>' +
+          '<option value="30 y 60 días">30 y 60 días</option>' +
+          '<option value="30, 60 y 90 días">30, 60 y 90 días</option>' +
+          '<option value="30, 60, 90 y 120 días">30, 60, 90 y 120 días</option>' +
+          '<option value="__otro__">Otro...</option>' +
+        '</select>' +
+        '<input type="text" id="plazoPago-otro" placeholder="Detallá el plazo" style="display:none;margin-top:8px;">' +
         '<label for="detalle">Detalle / condiciones (opcional)</label>' +
         '<textarea id="detalle" rows="2" placeholder="Ej: $X hasta XX kg, o tabla $X hasta XX kg a morir..." style="width:100%;padding:12px 14px;font-size:14px;border:1px solid var(--border);border-radius:4px;font-family:var(--sans);color:var(--text-primary);resize:vertical;"></textarea>' +
         '<button id="btn-guardar-cierre">Confirmar cierre</button>' +
@@ -341,6 +529,9 @@
       });
       var selInicial = document.getElementById('consignatario-select');
       document.getElementById('consignatario-nuevo').style.display = (selInicial.value === '__nuevo__') ? 'block' : 'none';
+      document.getElementById('plazoPago').addEventListener('change', function (ev) {
+        document.getElementById('plazoPago-otro').style.display = (ev.target.value === '__otro__') ? 'block' : 'none';
+      });
     }
 
     function renderConfirmacionCierre() {
@@ -386,6 +577,11 @@
         ? document.getElementById('consignatario-nuevo').value
         : selectConsignatario.value;
 
+      var selectPlazo = document.getElementById('plazoPago');
+      var plazoPago = (selectPlazo.value === '__otro__')
+        ? document.getElementById('plazoPago-otro').value
+        : selectPlazo.value;
+
       var datos = {
         token: tokenActual,
         categorias: categorias,
@@ -393,6 +589,7 @@
         lugarCarga: document.getElementById('lugarCarga').value,
         destino: document.getElementById('destino').value,
         diaCierre: document.getElementById('diaCierre').value,
+        plazoPago: plazoPago,
         detalle: document.getElementById('detalle').value
       };
       var btn = document.getElementById('btn-guardar-cierre');
