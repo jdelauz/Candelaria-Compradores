@@ -332,10 +332,22 @@
         '<label for="desbaste">Desbaste (%)</label>' +
         '<input type="text" id="desbaste" inputmode="decimal" placeholder="Ej: 4">' +
         '<div class="msg ok" id="kilos-netos-preview" style="display:none;"></div>' +
+        '<label for="precio-mantiene">Precio</label>' +
+        '<select id="precio-mantiene" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' +
+          '<option value="si">Se mantiene el pactado</option>' +
+          '<option value="no">Cambió</option>' +
+        '</select>' +
+        '<input type="text" id="precio-final" inputmode="decimal" placeholder="Nuevo precio $/kg" style="display:none;margin-top:8px;">' +
         '<label for="observaciones">Observaciones</label>' +
         '<textarea id="observaciones" rows="2" style="width:100%;padding:12px 14px;font-size:14px;border:1px solid var(--border);border-radius:4px;font-family:var(--sans);color:var(--text-primary);resize:vertical;"></textarea>' +
+        '<label for="adjunto">Adjuntar imagen o PDF (opcional)</label>' +
+        '<input type="file" id="adjunto" accept="image/*,application/pdf">' +
         '<button id="btn-guardar-informe">Confirmar informe</button>' +
         '<div id="msg-informe"></div>';
+
+      document.getElementById('precio-mantiene').addEventListener('change', function (ev) {
+        document.getElementById('precio-final').style.display = (ev.target.value === 'no') ? 'block' : 'none';
+      });
 
       document.getElementById('modo-kilos').addEventListener('change', function (ev) {
         var esPorCategoria = (ev.target.value === 'categoria');
@@ -383,14 +395,18 @@
         categorias.push({ categoria: cat, cantidad: cantidad, kilosBrutos: kilosInput ? kilosInput.value : '' });
       });
 
-      var datos = {
+      var precioMantiene = document.getElementById('precio-mantiene').value === 'si';
+
+      var datosBase = {
         token: tokenActual,
         idNegocio: negocioSeleccionadoActual.idNegocio,
         categorias: categorias,
         modoKilos: document.getElementById('modo-kilos').value,
         kilosBrutosTotal: document.getElementById('kilosBrutosTotal').value,
         desbaste: document.getElementById('desbaste').value,
-        observaciones: document.getElementById('observaciones').value
+        observaciones: document.getElementById('observaciones').value,
+        precioSeMantiene: precioMantiene,
+        precioFinal: document.getElementById('precio-final').value
       };
 
       var btn = document.getElementById('btn-guardar-informe');
@@ -399,21 +415,48 @@
       btn.disabled = true;
       btn.textContent = 'Guardando...';
 
-      apiPost('informarCarga', datos)
-        .then(function (res) {
-          btn.disabled = false;
-          btn.textContent = 'Confirmar informe';
-          if (res.ok) {
-            renderConfirmacionInforme();
-          } else {
-            msg.innerHTML = '<div class="msg error">' + res.error + '</div>';
-          }
-        })
-        .catch(function () {
-          btn.disabled = false;
-          btn.textContent = 'Confirmar informe';
-          msg.innerHTML = '<div class="msg error">Ocurrió un error de conexión. Probá de nuevo.</div>';
-        });
+      var archivo = document.getElementById('adjunto').files[0];
+
+      function enviar(datos) {
+        apiPost('informarCarga', datos)
+          .then(function (res) {
+            btn.disabled = false;
+            btn.textContent = 'Confirmar informe';
+            if (res.ok) {
+              renderConfirmacionInforme();
+            } else {
+              msg.innerHTML = '<div class="msg error">' + res.error + '</div>';
+            }
+          })
+          .catch(function () {
+            btn.disabled = false;
+            btn.textContent = 'Confirmar informe';
+            msg.innerHTML = '<div class="msg error">Ocurrió un error de conexión. Probá de nuevo.</div>';
+          });
+      }
+
+      if (!archivo) {
+        enviar(datosBase);
+        return;
+      }
+
+      var lector = new FileReader();
+      lector.onload = function () {
+        var base64Completo = lector.result; // "data:<mime>;base64,AAAA..."
+        var base64Puro = base64Completo.split(',')[1];
+        datosBase.adjunto = {
+          nombreArchivo: archivo.name,
+          tipoArchivo: archivo.type,
+          datosBase64: base64Puro
+        };
+        enviar(datosBase);
+      };
+      lector.onerror = function () {
+        btn.disabled = false;
+        btn.textContent = 'Confirmar informe';
+        msg.innerHTML = '<div class="msg error">No se pudo leer el archivo adjunto. Probá de nuevo.</div>';
+      };
+      lector.readAsDataURL(archivo);
     }
 
     function renderConfirmacionInforme() {
