@@ -279,7 +279,7 @@
 
       var opciones = negociosPendientesActuales.map(function (n, idx) {
         var resumenCat = n.categorias.map(function (c) { return c.categoria + ': ' + c.cantidad; }).join(', ');
-        var etiqueta = n.semana + ' · ' + n.lugarCarga + ' → ' + n.destino + ' (' + resumenCat + ')';
+        var etiqueta = n.semana + ' · ' + n.lugarCarga + ' → ' + (n.destino || '(sin destino)') + ' (' + resumenCat + ')';
         return '<option value="' + idx + '">' + etiqueta + '</option>';
       }).join('');
 
@@ -312,19 +312,24 @@
 
     function renderFormInforme(negocio) {
       negocioSeleccionadoActual = negocio;
-      renderCentro('⏳', 'Un momento', 'Buscando el precio pactado...');
+      renderCentro('⏳', 'Un momento', 'Buscando datos del negocio...');
 
-      apiGet({ action: 'precioOriginal', token: tokenActual, idNegocio: negocio.idNegocio })
-        .then(function (res) {
-          var precios = (res.ok && res.precios) ? res.precios : {};
-          renderFormInformeConPrecios_(negocio, precios);
-        })
-        .catch(function () {
-          renderFormInformeConPrecios_(negocio, {});
-        });
+      Promise.all([
+        apiGet({ action: 'precioOriginal', token: tokenActual, idNegocio: negocio.idNegocio }).catch(function () { return { ok: false }; }),
+        apiGet({ action: 'parametros' }).catch(function () { return { ok: false }; })
+      ]).then(function (resultados) {
+        var precios = (resultados[0].ok && resultados[0].precios) ? resultados[0].precios : {};
+        var destinos = (resultados[1].ok && resultados[1].destinos)
+          ? resultados[1].destinos.filter(function (d) { return d !== 'SIN DESIGNAR'; })
+          : [];
+        renderFormInformeConPrecios_(negocio, precios, destinos);
+      });
     }
 
-    function renderFormInformeConPrecios_(negocio, precios) {
+    function renderFormInformeConPrecios_(negocio, precios, destinos) {
+      var destinoYaDefinido = !!(negocio.destino && negocio.destino.trim() !== '');
+      var opcionesDestino = '<option value="">Elegí un destino...</option>' +
+        destinos.map(function (d) { return '<option value="' + d + '">' + d + '</option>'; }).join('');
       var filasCategorias = negocio.categorias.map(function (c) {
         return filaCategoriaInformeHtml_(c.categoria, c.cantidad, precios[c.categoria]);
       }).join('');
@@ -332,8 +337,10 @@
       cardBody.innerHTML =
         '<div class="section-label"><div class="bar"></div><span>Informe de carga</span></div>' +
         '<h1 class="title-md">' + negocio.consignatario + '</h1>' +
-        '<p class="body-text">' + negocio.semana + ' · ' + negocio.lugarCarga + ' → ' + negocio.destino + '</p>' +
-        '<label>Cantidad, precio y kilos por categoría</label>' +
+        '<p class="body-text">' + negocio.semana + ' · ' + negocio.lugarCarga + '</p>' +
+        '<label for="destino-informe">Destino' + (destinoYaDefinido ? '' : ' (obligatorio, todavía no estaba definido)') + '</label>' +
+        '<select id="destino-informe" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' + opcionesDestino + '</select>' +
+        '<label style="margin-top:16px;">Cantidad, precio y kilos por categoría</label>' +
         '<div id="categorias-informe-container">' + filasCategorias + '</div>' +
         '<label style="margin-top:16px;">¿Cómo cargás los kilos brutos?</label>' +
         '<select id="modo-kilos" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' +
@@ -353,6 +360,10 @@
         '<input type="file" id="adjunto" accept="image/*,application/pdf">' +
         '<button id="btn-guardar-informe">Confirmar informe</button>' +
         '<div id="msg-informe"></div>';
+
+      if (destinoYaDefinido) {
+        document.getElementById('destino-informe').value = negocio.destino.trim();
+      }
 
 
       document.getElementById('modo-kilos').addEventListener('change', function (ev) {
@@ -411,6 +422,7 @@
         token: tokenActual,
         idNegocio: negocioSeleccionadoActual.idNegocio,
         categorias: categorias,
+        destino: document.getElementById('destino-informe').value,
         modoKilos: document.getElementById('modo-kilos').value,
         kilosBrutosTotal: document.getElementById('kilosBrutosTotal').value,
         desbaste: document.getElementById('desbaste').value,
