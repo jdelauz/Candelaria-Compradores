@@ -295,7 +295,7 @@
       });
     }
 
-    function filaCategoriaInformeHtml_(cat, cantidadOriginal) {
+    function filaCategoriaInformeHtml_(cat, cantidadOriginal, precioOriginal) {
       return (
         '<div class="fila-cat-informe" data-cat="' + cat + '" style="border:1px solid var(--border);border-radius:4px;padding:10px;margin-top:10px;">' +
           '<label style="margin-top:0;">' + cat + ' — Cantidad</label>' +
@@ -304,21 +304,36 @@
             '<label style="margin-top:0;font-size:11px;">Kilos brutos (' + cat + ')</label>' +
             '<input type="text" class="informe-kilos" inputmode="decimal" placeholder="Ej: 45000">' +
           '</div>' +
+          '<label style="margin-top:8px;font-size:11px;">Precio $/kg' + (precioOriginal ? ' (pactado: $' + precioOriginal + ')' : '') + '</label>' +
+          '<input type="text" class="informe-precio" inputmode="decimal" placeholder="Ej: 2500" value="' + (precioOriginal || '') + '">' +
         '</div>'
       );
     }
 
     function renderFormInforme(negocio) {
       negocioSeleccionadoActual = negocio;
+      renderCentro('⏳', 'Un momento', 'Buscando el precio pactado...');
+
+      apiGet({ action: 'precioOriginal', token: tokenActual, idNegocio: negocio.idNegocio })
+        .then(function (res) {
+          var precios = (res.ok && res.precios) ? res.precios : {};
+          renderFormInformeConPrecios_(negocio, precios);
+        })
+        .catch(function () {
+          renderFormInformeConPrecios_(negocio, {});
+        });
+    }
+
+    function renderFormInformeConPrecios_(negocio, precios) {
       var filasCategorias = negocio.categorias.map(function (c) {
-        return filaCategoriaInformeHtml_(c.categoria, c.cantidad);
+        return filaCategoriaInformeHtml_(c.categoria, c.cantidad, precios[c.categoria]);
       }).join('');
 
       cardBody.innerHTML =
         '<div class="section-label"><div class="bar"></div><span>Informe de carga</span></div>' +
         '<h1 class="title-md">' + negocio.consignatario + '</h1>' +
         '<p class="body-text">' + negocio.semana + ' · ' + negocio.lugarCarga + ' → ' + negocio.destino + '</p>' +
-        '<label>Cantidad de animales por categoría</label>' +
+        '<label>Cantidad, precio y kilos por categoría</label>' +
         '<div id="categorias-informe-container">' + filasCategorias + '</div>' +
         '<label style="margin-top:16px;">¿Cómo cargás los kilos brutos?</label>' +
         '<select id="modo-kilos" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' +
@@ -332,12 +347,6 @@
         '<label for="desbaste">Desbaste (%)</label>' +
         '<input type="text" id="desbaste" inputmode="decimal" placeholder="Ej: 4">' +
         '<div class="msg ok" id="kilos-netos-preview" style="display:none;"></div>' +
-        '<label for="precio-mantiene">Precio</label>' +
-        '<select id="precio-mantiene" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:4px;">' +
-          '<option value="si">Se mantiene el pactado</option>' +
-          '<option value="no">Cambió</option>' +
-        '</select>' +
-        '<input type="text" id="precio-final" inputmode="decimal" placeholder="Nuevo precio $/kg" style="display:none;margin-top:8px;">' +
         '<label for="observaciones">Observaciones</label>' +
         '<textarea id="observaciones" rows="2" style="width:100%;padding:12px 14px;font-size:14px;border:1px solid var(--border);border-radius:4px;font-family:var(--sans);color:var(--text-primary);resize:vertical;"></textarea>' +
         '<label for="adjunto">Adjuntar imagen o PDF (opcional)</label>' +
@@ -345,9 +354,6 @@
         '<button id="btn-guardar-informe">Confirmar informe</button>' +
         '<div id="msg-informe"></div>';
 
-      document.getElementById('precio-mantiene').addEventListener('change', function (ev) {
-        document.getElementById('precio-final').style.display = (ev.target.value === 'no') ? 'block' : 'none';
-      });
 
       document.getElementById('modo-kilos').addEventListener('change', function (ev) {
         var esPorCategoria = (ev.target.value === 'categoria');
@@ -392,10 +398,14 @@
         var cat = fila.getAttribute('data-cat');
         var cantidad = fila.querySelector('.informe-cantidad').value;
         var kilosInput = fila.querySelector('.informe-kilos');
-        categorias.push({ categoria: cat, cantidad: cantidad, kilosBrutos: kilosInput ? kilosInput.value : '' });
+        var precioInput = fila.querySelector('.informe-precio');
+        categorias.push({
+          categoria: cat,
+          cantidad: cantidad,
+          kilosBrutos: kilosInput ? kilosInput.value : '',
+          precioFinal: precioInput ? precioInput.value : ''
+        });
       });
-
-      var precioMantiene = document.getElementById('precio-mantiene').value === 'si';
 
       var datosBase = {
         token: tokenActual,
@@ -404,9 +414,7 @@
         modoKilos: document.getElementById('modo-kilos').value,
         kilosBrutosTotal: document.getElementById('kilosBrutosTotal').value,
         desbaste: document.getElementById('desbaste').value,
-        observaciones: document.getElementById('observaciones').value,
-        precioSeMantiene: precioMantiene,
-        precioFinal: document.getElementById('precio-final').value
+        observaciones: document.getElementById('observaciones').value
       };
 
       var btn = document.getElementById('btn-guardar-informe');
